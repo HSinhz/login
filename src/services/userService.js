@@ -1,35 +1,30 @@
 require("dotenv").config();
+const mongoose = require('mongoose');
 const bcryptjs = require('bcryptjs');
+const nodemailer = require('nodemailer');
 const Account = require('../app/models/Account');
+const OtpCode = require('../app/models/OtpCode');
 const JWTService = require('./JWTService');
 const { createAccessToken, createRefreshToken, verifyToken } = require('../middleware/jwtacction');
-
 
 async function handlerLogin(email, password) {
     return new Promise( async ( resolve, reject) => {
         try{
             let userData = {};
-            let isExist = await checkUserName(email);
-            if( isExist){
-                let user = await Account.findOne({
-                    email: email,
-                });
+            let user = await  Account.findOne( { email: email })
                 if( user ){
                     // Compare password
-                    let checkpass =  bcryptjs.compareSync( password, user.password);
-                    let ex = Math.floor(Date.now() / 1000) + 30;
+                    let checkpass =  checkPassWord( password, user.password);
                     if( checkpass){
                         let payload = {
                             email: user.email,
-                            password: user.password,
                             roleId: user.roleId,
                             expiresIn: ex,
                         }
                         let payloadRefresh = {
                             email: user.email,
-                            password: user.password,
                             roleId: user.roleId,
-                            expiresIn: process.env.JWT_EXPIRES_REFRESH
+                            expiresIn: Math.floor(Date.now() / 1000) + 30
                         }
                         
                         // tạo Access_Token và Refresh_Token
@@ -49,24 +44,19 @@ async function handlerLogin(email, password) {
                                     access_token: userData.access_token,
                                     refresh_token: userData.refresh_token
                                 }
-                            })
-                            .catch( err => {
-                                console.error(err);
-                            })
+                            }) .catch( err => { console.error(err); })
                         }     
                     } else {
-                        userData.errCode = 3;
-                        userData.errMess = 'Sai mật khẩu';
+                        userData.errCode = 1;
+                        userData.errMess = 'Email hoặc mật khẩu sai';
+                        userData.data = '';
                     }
                 } else {    
-                    userData.errCode = 2;
-                    userData.errMess = 'Email của bạn không tồn tại. Vui lòng nhập lại Email';
+                    userData.errCode = 1;
+                    userData.errMess = 'Email hoặc mật khẩu sai';
+                    userData.data = '';
                 }
-            } else {
-                // return error
-                userData.errCode = 1;
-                userData.errMess = 'Email của bạn không tồn tại. Vui lòng nhập lại Email';
-            }
+            
             resolve(userData);
         } catch (e) {
             reject(e);
@@ -78,53 +68,85 @@ function handlerRegister( username, userData ) {
     return new Promise( async ( resolve, reject) => {
         try{
             const result = {};
-            let isExist = await checkUserName( username );
-            if( isExist ) {  
-                result.errCode = 0;
-                result.errMess = 'Email đã tồn tại';
-            } else {
-                const user =await new Account( userData );
-                user
-                    .save()
-                    .then( 
-                        result.errCode = 1,
-                        result.errMess = 'Đăng kí thành công' 
-                    )
+            let otp = await sendMail();
+            let payload = {
+                email: username,
+                otpcode: otp,
+                expiresIn: Math.floor(Date.now() / 1000) + 5*60
             }
-            resolve(result);
+            
+            let access_token_otp = createAccessToken( payload);
+            console.log("Đây là access_token_otp: ", access_token_otp);
+            let otpdbs = await new OtpCode({
+                email: username,
+                access_token: access_token_otp
+            }).save().then(() => console.log('Đã lưu OTP'))
+
+            result.ER = 0;
+            result.EM = 'OK!!!!';
+            result.DT = '';
+            resolve( result);
         } catch (e) {
             reject(e);
         }
     })
 }
 
-let checkUserName = ( email ) => {
-    return new Promise( async (resolve, reject) => {
-        try{
-            let user = await Account.findOne( 
-                { email: email }
-            )
-            if( user ){
-                resolve(true);
-            } else {
-                resolve(false);
-            }
-        } catch (e){
-            reject(e);
-        }
-    })
+
+async function checkUserName ( email ){
+    let user = await  Account.findOne( { email: email })
+    if( user ){
+        return true;
+    } else {
+        return false;
+    }
 }
 
-let compareUserPassword =( password) => {
-    return new Promise(( resolve, reject ) => {
-        try{
-            
-        } catch (e){
-            reject(e);
-        }
-    })
+const checkPassWord = (inputPass, hashPass) => {
+    return bcryptjs.compareSync( inputPass, hashPass);
 }
+
+function sendMail (){
+    let OTP = createOTPCode();
+    console.log("OTP: ", OTP)
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com, smtp.vaa.edu.vn',
+        port: 587,
+        secure: false,
+        auth: {
+             user: '2154810083@vaa.edu.vn',
+            pass: 'kzud wupw sxll gant'
+        }
+    });
+    const mailOptions = {
+        from: '2154810083@vaa.edu.vn',
+        to: 'vhieusinh2703@gmail.com',
+        subject: 'Mã xác minh đăng kí',
+        html: '<h1><%= OTP %></h1>'
+    };
+    const filledHtml = mailOptions.html.replace(/<%= OTP %>/g, OTP);
+        mailOptions.html = filledHtml;
+        transporter.sendMail( mailOptions, function(err, info){
+        if( err){
+            console.log( 'Error: ' , err);
+        } else {
+            console.log('Email sent: ', info.response);
+            
+        }
+    });
+    return OTP;
+}
+
+const createOTPCode = () => {
+    let min = 100000;
+    let max = 999999;
+    let OTP = Math.floor( Math.random() * ( max - min)) + min;
+    return OTP;
+}
+
 module.exports = {
     handlerLogin: handlerLogin,
-    handlerRegister: handlerRegister
+    handlerRegister: handlerRegister,
+    checkUserName: checkUserName,
 }

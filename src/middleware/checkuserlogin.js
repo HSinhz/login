@@ -1,4 +1,6 @@
 const { createAccessToken, createRefreshToken, verifyToken } = require('./jwtacction');
+const { checkUserName , sendMail } = require('../services/userService')
+
 
 
 const checkUserLogin = ( req, res , next) => {
@@ -8,7 +10,6 @@ const checkUserLogin = ( req, res , next) => {
     if( nonSecurePaths.includes(req.path)){
         return next();
     }
-
     if( user ){
         next();
     } else {
@@ -16,19 +17,61 @@ const checkUserLogin = ( req, res , next) => {
     }
 }
 
-// Xin Cấp lại Access_Token
-const ReAccessToken = (req, res, next) => {
-    let refresh_token = req.headers.token;
-    if( !refresh_token){
-        console.log('Refresh Token not exist')
-        return res.status(401).json("Refresh Token not exist");
+const checkInforLogin = ( req, res, next) => {
+    let email = req.body.email;
+    let password = req.body.password ;
+    if ( !email || !password ){
+        return res.status(500).json( {
+            errCode: 1,
+            message: 'Vui lòng nhập email và mật khẩu',
+        })
     }
-    
+    next();
 }
 
+const checkInforRegister = ( req, res, next) => {
+    let username = req.body.email;
+    let password = req.body.password;
+    let fullname = req.body.fullname;
+    let phonenumber = req.body.phonenumber;
+    if( !username || !password || !fullname || !phonenumber){
+        return res.status(500).json({
+            errCode: 0,
+            errMess: 'Vui lòng nhập thông tin'
+        })
+    }
+    next();
+}
+
+async function checkInforEmailRegister(req, res, next) {
+    let username = req.body.email;
+    let result = await checkUserName(username);
+    if( result){
+        return res.status(500).json({
+            errCode: 0,
+            errMess: 'Email đã tồn tại'
+        })
+    }
+    next();
+}
+
+const checkOTP = (req, res, next) => {
+    // if( req.body.otpcode ){
+        
+       
+    // } else {
+    //     return res.status(500).json( {
+    //         errCode: 1,
+    //         message: 'Vui lòng nhập mã OTP',
+    //     })
+    // }
+    next();
+}
 
 module.exports = {
     checkUserLogin,
-    ReAccessToken
-
+    checkInforLogin,
+    checkInforRegister,
+    checkInforEmailRegister,
+    checkOTP
 }

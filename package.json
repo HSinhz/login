@@ -33,7 +33,7 @@
     "mongoose-delete": "^1.0.0",
     "mongoose-sequence": "^6.0.0",
     "mongoose-slug-generator": "^1.0.4",
-    "nodemailer": "^6.9.7",
+    "nodemailer": "^6.9.8",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

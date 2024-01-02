@@ -41,30 +41,36 @@ const checkUserJWT = (req, res, next )=> {
     let refresh_token_client = req.headers.refreshtoken;
     let decodeAccessToken = verifyToken(access_token_client);
     let decodeRefreshToken = verifyToken(refresh_token_client);
-
+    
     let expiresIn = decodeAccessToken.expiresIn;
+    let ck = checkExpiredJWT(expiresIn)
+    // console.log("ck = " , ck);
 
+    console.log("Expires time ", expiresIn);
     if(decodeAccessToken){  // Kiểm tra AccessToken có tồn tại
-        if( checkExpiredJWT(expiresIn)){ // Kiểm tra thời gian của AccessToken
+        if( ck ){ // Kiểm tra thời gian của AccessToken
+            req.user = decodeAccessToken;
+            // console.log("Token còn thời hạn")
             next();
         } else {
             if( decodeRefreshToken ){ // Kiểm tra RefreshToken có tồn tại
                 let expiresInRefresh = decodeRefreshToken.expiresIn;
                 if( checkExpiredJWT(expiresInRefresh)) {
-                    let ex = Math.floor(Date.now() / 1000) + 30;
+                    let ex = Math.floor(Date.now() / 1000) +120;
                     let payload = {
                         email: decodeAccessToken.email,
-                        password: decodeAccessToken.password,
                         roleId: decodeAccessToken.roleId,
                         expiresIn: ex
                         // expiresIn: process.env.JWT_EXPIRES_IN
                     }
                     let newAccessToken = createAccessToken(payload);
+                    req.user = newAccessToken;
                     Account.updateOne( {email:payload.email},{
                         $set: {
                             access_token: newAccessToken,
                         }
-                    })
+                    }). then(() => "a").catch(() => console.log( "Thêm thất bại"))
+                    console.log("Đây alf token mới: ",newAccessToken);
                     next();
                 } else {
 
@@ -87,13 +93,18 @@ const checkUserJWT = (req, res, next )=> {
    
 }
 
-
 // Kiểm tra JWT có còn hạn sử dụng
 const checkExpiredJWT = (expiresIn) => {
-    let currentTimes = Math.floor(Date.now() /  1000);
+    let currentTimes = Math.floor(Date.now() / 1000);
+    console.log("Time now: " ,currentTimes - expiresIn);
+    
     if( currentTimes > expiresIn ){
-        return false;
+        // hết hạn
+    //    console.log("Hết hạn")
+       return false;
     } else {
+        // console.log("còn hạn")
+        // còn hạn
         return true;
     }
 }
@@ -103,5 +114,6 @@ module.exports = {
     createAccessToken,
     createRefreshToken,
     verifyToken,
-    checkUserJWT
+    checkUserJWT,
+    checkExpiredJWT
 }

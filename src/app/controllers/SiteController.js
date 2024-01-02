@@ -5,7 +5,8 @@ const { mutipleMongooseToObject } = require('../../util/mongoose');
 class SiteController {
     // [GET] /
     index(req, res, next) /* Đang ở controller */ {
-        res.status(201).json('Người dùng đã đăng nhập bằng Token');
+        res.render('home');
+        // res.status(201).json('Người dùng đã đăng nhập bằng Token');
     }
 
     // [GET] /search

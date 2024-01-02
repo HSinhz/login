@@ -8,13 +8,10 @@ const { checkUserJWT } = require('../middleware/jwtacction');
 
 // Đây là router sử dụng 
 // http://localhost:8000/home
-router.get('/home',checkUserJWT, siteController.index);
+router.get('/home', checkUserJWT , siteController.index);
 
 
 router.get('/login', siteController.login );
-router.get('/group', siteController.group );
-router.get('/grouprole', siteController.grouprole );
-router.get('/role', siteController.role );
 router.get('/register', siteController.register );
 router.get('/search', siteController.search);
 

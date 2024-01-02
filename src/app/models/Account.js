@@ -27,11 +27,8 @@ const Account = new Schema({
 
 Account.pre('save', async function(next){
     try{
-        console.log('password: ', this.password)
         const salt = await bcryptjs.genSalt(10);
-        console.log('salt: ' , salt);
         const passwordHashed = await bcryptjs.hash(this.password, salt);
-        console.log('passwordHashed: ',passwordHashed);
         this.password = passwordHashed;
         return false;
     } catch ( error){
